@@ -30,8 +30,8 @@ public class SpiffsViewBootstrap {
       FileInputStream fart = null;
       try {
         //fart = new FileInputStream("/home/petera/proj/generic/spiffs/imgs/90.hidden_file.spiffs");
-        //fart = new FileInputStream("/home/petera/proj/generic/spiffs/imgs/93.dump.bin");
-        fart = new FileInputStream("/home/petera/poo/spiffs/fsdump.bin");
+        fart = new FileInputStream("/home/petera/proj/generic/spiffs/imgs/93.dump.bin");
+        //fart = new FileInputStream("/home/petera/poo/spiffs/fsdump.bin");
         //fart = new FileInputStream("/home/petera/poo/spiffs/93.clean.img");
         FileChannel fc = fart.getChannel();
         Spiffs.cfg.physSize = fc.size();

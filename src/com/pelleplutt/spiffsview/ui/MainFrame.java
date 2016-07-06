@@ -121,7 +121,7 @@ public class MainFrame extends JFrame {
     pagePanel.recalcSize();
     
     problemTree = new JTree(problemTreeModel);
-    problemTree.setRootVisible(false);
+    problemTree.setRootVisible(true);
     problemTree.setCellRenderer(problemTreeRenderer);
     problemTree.addTreeSelectionListener(new TreeSelectionListener() {
       @Override
@@ -143,15 +143,16 @@ public class MainFrame extends JFrame {
         pagePanel.repaint();
       }
     });
-    JScrollPane treeScroll = new JScrollPane(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
-    treeScroll.setViewportView(problemTree);
+    JScrollPane treeScroll = new JScrollPane(problemTree, 
+        JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+    treeScroll.getViewport().setScrollMode(JViewport.SIMPLE_SCROLL_MODE); // fix artefacts on xubuntu while horizontal scrolling
 
-    splitter.add(pageScroll);
-    splitter.add(treeScroll);
+    splitter.setTopComponent(pageScroll);
+    splitter.setBottomComponent(treeScroll);
     splitter.setDividerSize(4);
     
     c.add(splitter, BorderLayout.CENTER);
-}
+  }
 
   
   private void doExit() {
@@ -259,7 +260,6 @@ public class MainFrame extends JFrame {
         }
           
         label.setText(sb.toString());
-        pack();
       }
     }
     
@@ -274,6 +274,8 @@ public class MainFrame extends JFrame {
       if (label != null) label.setForeground(c);
     }
   }
+  
+  
   
   class ProblemTreeModel implements TreeModel {
     Object root = new String("Problems");
