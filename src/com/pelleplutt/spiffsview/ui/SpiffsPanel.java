@@ -147,6 +147,7 @@ public class SpiffsPanel extends JPanel {
     int magPageHeight = (int)Math.round(mag * pageHeight);
     int w = SpiffsPanel.this.parent.getViewport().getViewRect().width;
     int ppb = Math.min(minPanelWidth / pageWidth, (int)Spiffs.pagesPerBlock());
+    if (ppb == 0) ppb = 1;
     int pagesPerRow = Math.max(ppb, (w / (magPageWidth * ppb)) * ppb);
     if (x < offsX) return -1;
     x -= offsX;
@@ -162,6 +163,7 @@ public class SpiffsPanel extends JPanel {
     int magPageHeight = (int)Math.round(mag * pageHeight);
     int w = SpiffsPanel.this.parent.getViewport().getViewRect().width;
     int ppb = Math.min(minPanelWidth / pageWidth, (int)Spiffs.pagesPerBlock());
+    if (ppb == 0) ppb = 1;
     int pagesPerRow = Math.max(ppb, (w / (magPageWidth * ppb)) * ppb);
     
     int nw = Math.max(minPanelWidth, Math.max(w, pagesPerRow*magPageWidth));
@@ -187,6 +189,7 @@ public class SpiffsPanel extends JPanel {
     int magPageWidth = (int)Math.round(mag * pageWidth);
     int magPageHeight = (int)Math.round(mag * pageHeight);
     int ppb = Math.min(minPanelWidth/ pageWidth, (int)Spiffs.pagesPerBlock());
+    if (ppb == 0) ppb = 1;
     int pagesPerRow = Math.max(ppb, (w / (magPageWidth * ppb)) * ppb);
     int y = 0;
     int pix = 0;

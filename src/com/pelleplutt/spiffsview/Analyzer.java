@@ -20,6 +20,10 @@ public class Analyzer {
   }
   
   public static void analyze() {
+    problems = new ArrayList<Problem>();
+    files = new HashMap<Long, SpiffsFile>();
+    pagesIdSpan = new HashMap<Long, SpiffsPage>();
+
     // analyze all ids
     for (int pix = 0; pix < Spiffs.nbrOfPages(); pix++) {
       idScan(SpiffsPage.getPage(pix));

@@ -3,34 +3,41 @@ package com.pelleplutt.spiffsview;
 import java.nio.ByteBuffer;
 
 public class Spiffs {
-  static SpiffsConfig cfg;
-  static ByteBuffer data;
+  public static SpiffsConfig cfg;
+  public static ByteBuffer data;
   
   public static long nbrOfPages() {
+    if (cfg == null) return 0;
     return (int)((cfg.physSize - cfg.physOffset) / cfg.logPageSize);
   }
   
   public static long pagesPerBlock() {
+    if (cfg == null) return 0;
     return cfg.logBlockSize / cfg.logPageSize;
   }
   
   public static long nbrOfLookupPages() {
+    if (cfg == null) return 0;
     return Math.max(1, pagesPerBlock() * cfg.sizeObjId / cfg.logPageSize);
   }
   
   public static boolean isLookupPage(long pix) {
+    if (cfg == null) return false;
     return pix % pagesPerBlock() < nbrOfLookupPages(); 
   }
   
   public static long lookupMaxEntries() {
+    if (cfg == null) return 0;
     return pagesPerBlock() - nbrOfLookupPages();
   }
 
   public static long lookupPageIndexInBlock(long pix) {
+    if (cfg == null) return 0;
     return pix % pagesPerBlock();
   }
   
   public static long lookupEntriesInLUTPage(long pix) {
+    if (cfg == null) return 0;
     if (lookupPageIndexInBlock(pix) < nbrOfLookupPages() - 1) {
       return cfg.logPageSize / cfg.sizeObjId;
     } else {
@@ -39,19 +46,23 @@ public class Spiffs {
   }
   
   public static long pageToBlock(long pix) {
+    if (cfg == null) return 0;
     return pix / pagesPerBlock();
   }
   
   public static long sizeOfPageHeader() {
+    if (cfg == null) return 0;
     return cfg.sizeObjId + cfg.sizeSpanIx + 1 /*flag byte*/;
   }
   
   public static long sizeOfObjectHeader() {
+    if (cfg == null) return 0;
     long phdrSz = sizeOfPageHeader();
     return (long)(Math.ceil((double)phdrSz / 4.0) * 4.0);
   }
   
   public static long sizeOfObjectIndexHeader() {
+    if (cfg == null) return 0;
     long sz = sizeOfObjectHeader();
     sz += 4; // size
     sz += 1; // type
@@ -61,10 +72,12 @@ public class Spiffs {
   }
   
   public static long dataPageSize() {
+    if (cfg == null) return 0;
     return cfg.logPageSize - sizeOfPageHeader();
   }
   
   public static long objectHeaderIndexLength() {
+    if (cfg == null) return 0;
     return (cfg.logPageSize - sizeOfObjectIndexHeader())/cfg.sizePageIx;
   }
   

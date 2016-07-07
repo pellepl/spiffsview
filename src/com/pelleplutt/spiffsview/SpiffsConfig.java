@@ -1,14 +1,14 @@
 package com.pelleplutt.spiffsview;
 
 public class SpiffsConfig {
-  long physOffset;
-  long physSize;
-  int physBlockSize;
-  int logPageSize;
-  int logBlockSize;
-  int fileNameSize;
-  boolean bigEndian;
-  int sizeObjId;
-  int sizePageIx;
-  int sizeSpanIx;
+  public long physOffset;
+  public long physSize;
+  public int physBlockSize;
+  public int logPageSize;
+  public int logBlockSize;
+  public int fileNameSize;
+  public boolean bigEndian;
+  public int sizeObjId;
+  public int sizePageIx;
+  public int sizeSpanIx;
 }

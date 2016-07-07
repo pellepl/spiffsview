@@ -15,7 +15,8 @@ public class SpiffsPage implements SpiffsConstants {
   
   static Map<Integer, SpiffsPage> cache = new HashMap<Integer, SpiffsPage>(); 
   
-  public static void populate() {
+  public static void update() {
+    cache = new HashMap<Integer, SpiffsPage>();
     for (int i = 0; i < Spiffs.nbrOfPages(); i++) {
       getPage(i);
     }

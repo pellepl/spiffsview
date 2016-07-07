@@ -8,11 +8,20 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.event.ActionEvent;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
+import java.io.File;
+import java.io.FileInputStream;
+import java.nio.ByteOrder;
+import java.nio.channels.FileChannel;
 
+import javax.swing.AbstractAction;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JMenu;
+import javax.swing.JMenuBar;
+import javax.swing.JMenuItem;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
@@ -33,6 +42,7 @@ import com.pelleplutt.spiffsview.Essential;
 import com.pelleplutt.spiffsview.Problem;
 import com.pelleplutt.spiffsview.Settings;
 import com.pelleplutt.spiffsview.Spiffs;
+import com.pelleplutt.spiffsview.SpiffsConfig;
 import com.pelleplutt.spiffsview.SpiffsPage;
 import com.pelleplutt.util.AppSystem;
 import com.pelleplutt.util.UIUtil;
@@ -62,7 +72,7 @@ public class MainFrame extends JFrame {
       UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
     } catch (Throwable t) {
     }
-    setIconImage(UIUtil.createImageIcon("res/spiffsview.png").getImage());
+    setIconImage(UIUtil.createImageIcon("res/spiffsico.png").getImage());
     setTitle(Essential.name + " v" + Essential.vMaj + "." + Essential.vMin
         + "." + Essential.vMic);
     setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
@@ -98,7 +108,8 @@ public class MainFrame extends JFrame {
     });
     SwingUtilities.invokeLater(new Runnable() {
       public void run() {
-        build();
+        buildUI();
+        buildMenu();
         pack();
         setLocationByPlatform(true);
         setVisible(true);
@@ -106,7 +117,15 @@ public class MainFrame extends JFrame {
     });
   }
   
-  private void build() {
+  private void buildMenu() {
+    JMenuBar menuBar = new JMenuBar();
+    JMenu menu = new JMenu("File");
+    menu.add(new JMenuItem(new ActionOpenFileDump()));
+    menuBar.add(menu);
+    setJMenuBar(menuBar);
+  }
+  
+  private void buildUI() {
     Container c = getContentPane();
     c.setLayout(new BorderLayout());
     
@@ -357,6 +376,59 @@ public class MainFrame extends JFrame {
     }
     
   };
+  
+  
+  
+  
+  class ActionOpenFileDump extends AbstractAction {
+    public ActionOpenFileDump() {
+      super("Open file dump...");
+    }
+    
+    @Override
+    public void actionPerformed(ActionEvent e) {
+      File f = UIUtil.selectFile(MainFrame.this, getValue(AbstractAction.NAME).toString(), "Open", true, false);
+      if (f != null) {
+        Spiffs.cfg = new SpiffsConfig();
 
+        Spiffs.cfg.bigEndian = false;
+        Spiffs.cfg.physOffset = 0;//4*1024*1024;
+        Spiffs.cfg.physBlockSize = 4096;
+        Spiffs.cfg.logBlockSize = 4096;
+        Spiffs.cfg.logPageSize = 256;
+        Spiffs.cfg.fileNameSize = 32;
+        Spiffs.cfg.sizeObjId = 4;
+        Spiffs.cfg.sizePageIx = 4;
+        Spiffs.cfg.sizeSpanIx = 4;
+        FileInputStream fart = null;
+        try {
+          //fart = new FileInputStream("/home/petera/proj/generic/spiffs/imgs/90.hidden_file.spiffs");
+          fart = new FileInputStream("/home/petera/proj/generic/spiffs/imgs/93.dump.bin");
+          //fart = new FileInputStream("/home/petera/poo/spiffs/fsdump.bin");
+          //fart = new FileInputStream("/home/petera/poo/spiffs/93.clean.img");
+          FileChannel fc = fart.getChannel();
+          Spiffs.cfg.physSize = fc.size();
+          Spiffs.data = fc.map(FileChannel.MapMode.READ_ONLY, Spiffs.cfg.physOffset, Spiffs.cfg.physSize - Spiffs.cfg.physOffset);
+          Spiffs.data.order(Spiffs.cfg.bigEndian ? ByteOrder.BIG_ENDIAN : ByteOrder.LITTLE_ENDIAN);
+//          SpiffsPage p;
+//          for (int i = 0; i < 256; i++) {
+//            p = SpiffsPage.loadPage(i);
+//            System.out.println(p);
+//          }
+          SpiffsPage.update();
+          Analyzer.analyze();
+          problemTree.setModel(problemTreeModel);
+          problemTree.repaint();
+          problemTree.validate();
+          problemTree.updateUI();
+          repaint();
+        } catch (Throwable t) {
+          t.printStackTrace();
+        } finally {
+//          AppSystem.closeSilently(fart);
+        }
+      }
+    }
+  }
 
 }
