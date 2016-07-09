@@ -14,6 +14,8 @@ public class Settings {
   private static Settings _inst;
   
   public static final int MAX_LIST_ENTRIES = 9;
+
+  public static final String RECENT_FILES = "resent.files";
   
   Properties props = new Properties();
   File settingsFile = new File(System.getProperty("user.home") + File.separator + 

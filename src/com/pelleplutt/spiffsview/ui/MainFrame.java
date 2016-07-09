@@ -40,6 +40,8 @@ import javax.swing.tree.TreePath;
 import com.pelleplutt.spiffsview.Analyzer;
 import com.pelleplutt.spiffsview.Essential;
 import com.pelleplutt.spiffsview.Problem;
+import com.pelleplutt.spiffsview.ProgressListener;
+import com.pelleplutt.spiffsview.Progressable;
 import com.pelleplutt.spiffsview.Settings;
 import com.pelleplutt.spiffsview.Spiffs;
 import com.pelleplutt.spiffsview.SpiffsConfig;
@@ -47,7 +49,7 @@ import com.pelleplutt.spiffsview.SpiffsPage;
 import com.pelleplutt.util.AppSystem;
 import com.pelleplutt.util.UIUtil;
 
-public class MainFrame extends JFrame {
+public class MainFrame extends JFrame implements ProgressListener {
   public static final Font DEFAULT_FONT = Font.decode("courier-plain-12");
   private static final long serialVersionUID = 4632950413113732498L;
   private static MainFrame _inst;
@@ -55,6 +57,8 @@ public class MainFrame extends JFrame {
   JTree problemTree;
   TreeCellRenderer problemTreeRenderer = new ProblemTreeCellRenderer();
   TreeModel problemTreeModel = new ProblemTreeModel();
+  StatusPanel statusPanel;
+  Analyzer analyzer;
   
   static public synchronized MainFrame inst() {
     if (_inst == null) {
@@ -117,11 +121,29 @@ public class MainFrame extends JFrame {
     });
   }
   
+  JMenu recentFiles = new JMenu("Recent dumps");
+  private void menuUpdateRecent() {
+    String[] recent = Settings.inst().list(Settings.RECENT_FILES);
+    recentFiles.removeAll();
+    if (recent != null && recent.length > 0) {
+      recentFiles.setEnabled(true);
+      for (String path : recent) {
+        recentFiles.add(new JMenuItem(new ActionOpenFileDumpRecent(new File(path))));
+      }
+    } else {
+      recentFiles.setEnabled(false);
+    }
+  }
+  
   private void buildMenu() {
     JMenuBar menuBar = new JMenuBar();
     JMenu menu = new JMenu("File");
-    menu.add(new JMenuItem(new ActionOpenFileDump()));
     menuBar.add(menu);
+    menu.add(new JMenuItem(new ActionOpenFileDump()));
+    menu.add(recentFiles);
+    menuUpdateRecent();
+
+    
     setJMenuBar(menuBar);
   }
   
@@ -170,7 +192,10 @@ public class MainFrame extends JFrame {
     splitter.setBottomComponent(treeScroll);
     splitter.setDividerSize(4);
     
+    statusPanel = new StatusPanel();
+    
     c.add(splitter, BorderLayout.CENTER);
+    c.add(statusPanel, BorderLayout.SOUTH);
   }
 
   
@@ -306,7 +331,7 @@ public class MainFrame extends JFrame {
     @Override
     public Object getChild(Object parent, int index) {
       if (parent == root) {
-        return Analyzer.getProblems().get(index);
+        return analyzer.getProblems().get(index);
       } else if (parent instanceof Problem) {
         Problem p = (Problem)parent;
         if (p.page != null && p.refPage != null) {
@@ -327,8 +352,9 @@ public class MainFrame extends JFrame {
 
     @Override
     public int getChildCount(Object parent) {
+      if (analyzer == null) return 0;
       if (parent == root) {
-        return Analyzer.getProblems().size();
+        return analyzer.getProblems().size();
       } else if (parent instanceof Problem) {
         Problem p = (Problem)parent;
         return (p.page == null ? 0 : 1) + (p.refPage == null ? 0 : 1);
@@ -353,7 +379,7 @@ public class MainFrame extends JFrame {
     @Override
     public int getIndexOfChild(Object parent, Object child) {
       if (parent == root) {
-        return Analyzer.getProblems().indexOf(child);
+        return analyzer.getProblems().indexOf(child);
       } else if (parent instanceof Problem) {
         Problem p = (Problem)parent;
         if (p.page != null && p.refPage != null) {
@@ -377,7 +403,34 @@ public class MainFrame extends JFrame {
     
   };
   
+  public void setStatus(String status) {
+    statusPanel.setText(status);
+  }
   
+  public void refreshAll() {
+    Thread t = new Thread(new Runnable() {
+
+      @Override
+      public void run() {
+        setStatus("Loading...");
+        SpiffsPage.update();
+        if (analyzer != null) {
+          analyzer.removeListener(MainFrame.this);
+        }
+        analyzer = new Analyzer();
+        analyzer.addListener(MainFrame.this);
+        setStatus("Analyzing...");
+        analyzer.analyze();
+        setStatus("Analyzed");
+        problemTree.setModel(problemTreeModel);
+        problemTree.repaint();
+        problemTree.validate();
+        problemTree.updateUI();
+      }
+    }, "refresher");
+    t.setDaemon(true);
+    t.start();
+  }
   
   
   class ActionOpenFileDump extends AbstractAction {
@@ -389,6 +442,9 @@ public class MainFrame extends JFrame {
     public void actionPerformed(ActionEvent e) {
       File f = UIUtil.selectFile(MainFrame.this, getValue(AbstractAction.NAME).toString(), "Open", true, false);
       if (f != null) {
+        Settings.inst().listAdd(Settings.RECENT_FILES, f.getAbsolutePath());
+        menuUpdateRecent();
+
         Spiffs.cfg = new SpiffsConfig();
 
         Spiffs.cfg.bigEndian = false;
@@ -410,17 +466,13 @@ public class MainFrame extends JFrame {
           Spiffs.cfg.physSize = fc.size();
           Spiffs.data = fc.map(FileChannel.MapMode.READ_ONLY, Spiffs.cfg.physOffset, Spiffs.cfg.physSize - Spiffs.cfg.physOffset);
           Spiffs.data.order(Spiffs.cfg.bigEndian ? ByteOrder.BIG_ENDIAN : ByteOrder.LITTLE_ENDIAN);
-//          SpiffsPage p;
-//          for (int i = 0; i < 256; i++) {
-//            p = SpiffsPage.loadPage(i);
-//            System.out.println(p);
-//          }
-          SpiffsPage.update();
-          Analyzer.analyze();
-          problemTree.setModel(problemTreeModel);
-          problemTree.repaint();
-          problemTree.validate();
-          problemTree.updateUI();
+
+          SwingUtilities.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+              refreshAll();
+            }
+          });
           repaint();
         } catch (Throwable t) {
           t.printStackTrace();
@@ -431,4 +483,71 @@ public class MainFrame extends JFrame {
     }
   }
 
+  class ActionOpenFileDumpRecent extends AbstractAction {
+    File file;
+    public ActionOpenFileDumpRecent(File file) {
+      super(file.getName());
+      this.file = file;
+    }
+    
+    @Override
+    public void actionPerformed(ActionEvent e) {
+      if (file != null) {
+        Settings.inst().listAdd(Settings.RECENT_FILES, file.getAbsolutePath());
+        menuUpdateRecent();
+
+        Spiffs.cfg = new SpiffsConfig();
+
+        Spiffs.cfg.bigEndian = false;
+        Spiffs.cfg.physOffset = 0;//4*1024*1024;
+        Spiffs.cfg.physBlockSize = 4096;
+        Spiffs.cfg.logBlockSize = 4096;
+        Spiffs.cfg.logPageSize = 256;
+        Spiffs.cfg.fileNameSize = 32;
+        Spiffs.cfg.sizeObjId = 4;
+        Spiffs.cfg.sizePageIx = 4;
+        Spiffs.cfg.sizeSpanIx = 4;
+        FileInputStream fart = null;
+        try {
+          //fart = new FileInputStream("/home/petera/proj/generic/spiffs/imgs/90.hidden_file.spiffs");
+          fart = new FileInputStream(file);
+          //fart = new FileInputStream("/home/petera/poo/spiffs/fsdump.bin");
+          //fart = new FileInputStream("/home/petera/poo/spiffs/93.clean.img");
+          FileChannel fc = fart.getChannel();
+          Spiffs.cfg.physSize = fc.size();
+          Spiffs.data = fc.map(FileChannel.MapMode.READ_ONLY, Spiffs.cfg.physOffset, Spiffs.cfg.physSize - Spiffs.cfg.physOffset);
+          Spiffs.data.order(Spiffs.cfg.bigEndian ? ByteOrder.BIG_ENDIAN : ByteOrder.LITTLE_ENDIAN);
+
+          SwingUtilities.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+              refreshAll();
+            }
+          });
+
+          repaint();
+        } catch (Throwable t) {
+          t.printStackTrace();
+        } finally {
+//          AppSystem.closeSilently(fart);
+        }
+      }
+    }
+  }
+
+  // Progresslistener Impl
+  @Override
+  public void started(Progressable p) {
+    statusPanel.setProgress(0);
+  }
+
+  @Override
+  public void work(Progressable p, double percentage) {
+    statusPanel.setProgress(percentage);
+  }
+
+  @Override
+  public void stopped(Progressable p, String message) {
+    statusPanel.setProgress(0);
+  }
 }

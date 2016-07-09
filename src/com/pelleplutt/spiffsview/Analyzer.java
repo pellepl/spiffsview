@@ -7,47 +7,59 @@ import java.util.Map;
 
 import com.pelleplutt.util.Log;
 
-public class Analyzer {
+public class Analyzer implements Progressable {
   
-  static List<Problem> problems = new ArrayList<Problem>();
+  List<Problem> problems = new ArrayList<Problem>();
   
-  static Map<Long, SpiffsFile> files = new HashMap<Long, SpiffsFile>();
+  Map<Long, SpiffsFile> files = new HashMap<Long, SpiffsFile>();
 
-  static Map<Long, SpiffsPage> pagesIdSpan = new HashMap<Long, SpiffsPage>();
+  Map<Long, SpiffsPage> pagesIdSpan = new HashMap<Long, SpiffsPage>();
+  
+  ProgressHandler progress = new ProgressHandler(this);
 
-  public static List<Problem> getProblems() {
+  public List<Problem> getProblems() {
     return problems;
   }
   
-  public static void analyze() {
+  public void analyze() {
     problems = new ArrayList<Problem>();
     files = new HashMap<Long, SpiffsFile>();
     pagesIdSpan = new HashMap<Long, SpiffsPage>();
 
+    progress.fireStarted();
+    
     // analyze all ids
     for (int pix = 0; pix < Spiffs.nbrOfPages(); pix++) {
+      progress.fireWork(((double)pix / (double)Spiffs.nbrOfPages()) * 0.25);
       idScan(SpiffsPage.getPage(pix));
     }
     // collect file map
     for (int pix = 0; pix < Spiffs.nbrOfPages(); pix++) {
+      progress.fireWork(0.25 + ((double)pix / (double)Spiffs.nbrOfPages()) * 0.25);
       fileScan(SpiffsPage.getPage(pix));
     }
     // analyze pages
     for (int pix = 0; pix < Spiffs.nbrOfPages(); pix++) {
+      progress.fireWork(0.50 + ((double)pix / (double)Spiffs.nbrOfPages()) * 0.25);
       analyzePage(SpiffsPage.getPage(pix));
     }
     // analyze files
+    int fileIx = 0;
+    int filesCount = files.values().size();
     for (SpiffsFile f : files.values()) {
+      progress.fireWork(0.75 + ((double)fileIx++ / (double)filesCount) * 0.25);
       analyzeFile(f);
     }
+    
+    progress.fireStopped(null);
   }
   
-  static SpiffsPage getPageById(long objId, long spanIx) {
+  SpiffsPage getPageById(long objId, long spanIx) {
     long idspan = (objId << 32) | spanIx;
     return pagesIdSpan.get(idspan);
   }
   
-  static void idScan(SpiffsPage p) {
+  void idScan(SpiffsPage p) {
     if (!p.isDeleted() && !p.isFree()) {
       long idspan = (p.getObjectId() << 32) | p.getSpanIndex();
       if (pagesIdSpan.containsKey(idspan)) {
@@ -58,7 +70,7 @@ public class Analyzer {
     }
   }
   
-  static void fileScan(SpiffsPage p) {
+  void fileScan(SpiffsPage p) {
     if (!p.isDeleted() && !p.isFree() && p.isObjectIndexHeader()) {
       SpiffsFile f = new SpiffsFile(p);
       files.put(Spiffs.cleanObjectId(p.getObjectId()), f);
@@ -76,7 +88,7 @@ public class Analyzer {
     }
   }
   
-  static void analyzePage(SpiffsPage p) {
+  void analyzePage(SpiffsPage p) {
     if (p.isLookUp()) {
       analyzeLUT(p);
     } else {
@@ -87,7 +99,7 @@ public class Analyzer {
     }
   }
   
-  static void analyzeCommon(SpiffsPage page) {
+  void analyzeCommon(SpiffsPage page) {
     if (page.isFree()) {
       if (!page.checkErased()) {
         add(new Problem(Problem.PAGE_FREE_DIRTY, page));
@@ -102,7 +114,7 @@ public class Analyzer {
     }
   }
 
-  static void analyzeLUT(SpiffsPage lutPage) {
+  void analyzeLUT(SpiffsPage lutPage) {
     if (Spiffs.lookupPageIndexInBlock(lutPage.getPageIndex()) == Spiffs.nbrOfLookupPages() - 1) {
       // check magic TODO
       
@@ -159,7 +171,7 @@ public class Analyzer {
     } // per page reference in lut
   }
 
-  static void analyzeIndex(SpiffsPage ixPage) {
+  void analyzeIndex(SpiffsPage ixPage) {
     int indices = (int)(ixPage.getSpanIndex() == 0 ? Spiffs.objectHeaderIndexLength() : Spiffs.objectIndexLength());
     SpiffsFile file = files.get(Spiffs.cleanObjectId(ixPage.getObjectId())); // TODO check null
     long maxEntryIx = file.getNbrOfDataPages();
@@ -198,7 +210,7 @@ public class Analyzer {
       
   }
 
-  static void analyzeFile(SpiffsFile f) {
+  void analyzeFile(SpiffsFile f) {
     int dataPages = f.getNbrOfDataPages();
     // check that all data pages exist for file
     for (int spix = 0; spix < dataPages; spix++) {
@@ -239,9 +251,18 @@ public class Analyzer {
 
   }
 
-  
-  static private void add(Problem p) {
+  private void add(Problem p) {
     Log.println(p.toString());
     problems.add(p);
+  }
+
+  @Override
+  public void addListener(ProgressListener p) {
+    progress.addListener(p);
+  }
+
+  @Override
+  public void removeListener(ProgressListener p) {
+    progress.removeListener(p);
   }
 }
