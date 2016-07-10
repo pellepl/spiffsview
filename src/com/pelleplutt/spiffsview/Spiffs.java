@@ -108,7 +108,11 @@ public class Spiffs {
   // formatting
   
   public static String formatObjId(long objId) {
-    if (isObjectIndex(objId)) {
+    if (objId == Spiffs.getDeletedObjectId()) {
+      return "DELE";
+    } else if (objId == Spiffs.getFreeObjectId()) {
+      return "FREE";
+    } else if (isObjectIndex(objId)) {
       return "*" + String.format(typeFormat(Spiffs.cfg.sizeObjId), cleanObjectId(objId));
     }
     return String.format(typeFormat(Spiffs.cfg.sizeObjId), objId);
@@ -151,6 +155,14 @@ public class Spiffs {
     data.position(pos);
     data.get(b);
     return b;
+  }
+
+  public static int read(int pos) {
+    return data.get(pos) & 0xff;
+  }
+
+  public static int read() {
+    return data.get() & 0xff;
   }
 
   public static long readType(int pos, int size) {

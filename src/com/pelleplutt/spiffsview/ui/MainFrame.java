@@ -37,7 +37,8 @@ import javax.swing.tree.TreeCellRenderer;
 import javax.swing.tree.TreeModel;
 import javax.swing.tree.TreePath;
 
-import com.pelleplutt.spiffsview.Analyzer;
+import com.pelleplutt.spiffsview.AnalyzerConfig;
+import com.pelleplutt.spiffsview.AnalyzerConsistency;
 import com.pelleplutt.spiffsview.Essential;
 import com.pelleplutt.spiffsview.Problem;
 import com.pelleplutt.spiffsview.ProgressListener;
@@ -58,7 +59,7 @@ public class MainFrame extends JFrame implements ProgressListener {
   TreeCellRenderer problemTreeRenderer = new ProblemTreeCellRenderer();
   TreeModel problemTreeModel = new ProblemTreeModel();
   StatusPanel statusPanel;
-  Analyzer analyzer;
+  AnalyzerConsistency consAnalyzer;
   
   static public synchronized MainFrame inst() {
     if (_inst == null) {
@@ -331,7 +332,7 @@ public class MainFrame extends JFrame implements ProgressListener {
     @Override
     public Object getChild(Object parent, int index) {
       if (parent == root) {
-        return analyzer.getProblems().get(index);
+        return consAnalyzer.getProblems().get(index);
       } else if (parent instanceof Problem) {
         Problem p = (Problem)parent;
         if (p.page != null && p.refPage != null) {
@@ -352,9 +353,9 @@ public class MainFrame extends JFrame implements ProgressListener {
 
     @Override
     public int getChildCount(Object parent) {
-      if (analyzer == null) return 0;
+      if (consAnalyzer == null) return 0;
       if (parent == root) {
-        return analyzer.getProblems().size();
+        return consAnalyzer.getProblems().size();
       } else if (parent instanceof Problem) {
         Problem p = (Problem)parent;
         return (p.page == null ? 0 : 1) + (p.refPage == null ? 0 : 1);
@@ -379,7 +380,7 @@ public class MainFrame extends JFrame implements ProgressListener {
     @Override
     public int getIndexOfChild(Object parent, Object child) {
       if (parent == root) {
-        return analyzer.getProblems().indexOf(child);
+        return consAnalyzer.getProblems().indexOf(child);
       } else if (parent instanceof Problem) {
         Problem p = (Problem)parent;
         if (p.page != null && p.refPage != null) {
@@ -414,13 +415,17 @@ public class MainFrame extends JFrame implements ProgressListener {
       public void run() {
         setStatus("Loading...");
         SpiffsPage.update();
-        if (analyzer != null) {
-          analyzer.removeListener(MainFrame.this);
+        
+        AnalyzerConfig cfgAnalyzer = new AnalyzerConfig();
+        cfgAnalyzer.analyze(Spiffs.cfg.physOffset, Spiffs.cfg.physSize);
+        
+        if (consAnalyzer != null) {
+          consAnalyzer.removeListener(MainFrame.this);
         }
-        analyzer = new Analyzer();
-        analyzer.addListener(MainFrame.this);
+        consAnalyzer = new AnalyzerConsistency();
+        consAnalyzer.addListener(MainFrame.this);
         setStatus("Analyzing...");
-        analyzer.analyze();
+        consAnalyzer.analyze();
         setStatus("Analyzed");
         problemTree.setModel(problemTreeModel);
         problemTree.repaint();

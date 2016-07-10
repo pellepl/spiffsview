@@ -11,4 +11,7 @@ public class SpiffsConfig {
   public int sizeObjId;
   public int sizePageIx;
   public int sizeSpanIx;
+  public boolean magic;
+  public boolean magicLength;
+  public boolean alignObjectIndexTables;
 }

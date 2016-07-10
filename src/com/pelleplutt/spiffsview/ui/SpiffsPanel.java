@@ -297,6 +297,22 @@ public class SpiffsPanel extends JPanel {
       y+=h;
       g.drawString("BLK " + p.getBlockIndexString(), 0, y);
       y+=h;
+      
+      if (height > h * 16) {
+        int lutIx = 0;
+        lutLoop:
+        while (y < height) {
+          int x = 0;
+          while (x + strWidth + 4 < width) {
+            g.drawString(Spiffs.formatObjId(p.readLUTEntry(lutIx++)), x, y);
+            if (lutIx >= Spiffs.cfg.logPageSize / Spiffs.cfg.sizeObjId) {
+              break lutLoop;
+            }
+            x += strWidth + 4;
+          }
+          y += h;
+        }
+      }
     } else if (p.isFree()) {
       g.drawString("FREE", 0, y);
       y+=h;

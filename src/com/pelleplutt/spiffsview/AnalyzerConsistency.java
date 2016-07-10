@@ -7,7 +7,7 @@ import java.util.Map;
 
 import com.pelleplutt.util.Log;
 
-public class Analyzer implements Progressable {
+public class AnalyzerConsistency implements Progressable {
   
   List<Problem> problems = new ArrayList<Problem>();
   
@@ -17,10 +17,6 @@ public class Analyzer implements Progressable {
   
   ProgressHandler progress = new ProgressHandler(this);
 
-  public List<Problem> getProblems() {
-    return problems;
-  }
-  
   public void analyze() {
     problems = new ArrayList<Problem>();
     files = new HashMap<Long, SpiffsFile>();
@@ -249,6 +245,10 @@ public class Analyzer implements Progressable {
       }
     }
 
+  }
+
+  public List<Problem> getProblems() {
+    return problems;
   }
 
   private void add(Problem p) {
