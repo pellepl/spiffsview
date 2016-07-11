@@ -297,22 +297,6 @@ public class SpiffsPanel extends JPanel {
       y+=h;
       g.drawString("BLK " + p.getBlockIndexString(), 0, y);
       y+=h;
-      
-      if (height > h * 16) {
-        int lutIx = 0;
-        lutLoop:
-        while (y < height) {
-          int x = 0;
-          while (x + strWidth + 4 < width) {
-            g.drawString(Spiffs.formatObjId(p.readLUTEntry(lutIx++)), x, y);
-            if (lutIx >= Spiffs.cfg.logPageSize / Spiffs.cfg.sizeObjId) {
-              break lutLoop;
-            }
-            x += strWidth + 4;
-          }
-          y += h;
-        }
-      }
     } else if (p.isFree()) {
       g.drawString("FREE", 0, y);
       y+=h;
@@ -343,6 +327,42 @@ public class SpiffsPanel extends JPanel {
         y+=h;
         g.drawString("LEN:" + p.getSizeString(), 0, y);
         y+=h;
+      }
+    }
+    if (height > h * 16) {
+      y += 4;
+      if (p.isLookUp()) {
+        int lutIx = 0;
+        lutLoop:
+        while (y < height) {
+          int x = 0;
+          while (x + strWidth + 4 < width) {
+            g.drawString(Spiffs.formatObjId(p.readLUTEntry(lutIx++)), x, y);
+            if (lutIx >= Spiffs.lookupEntriesInLUTPage(p.getPageIndex())) {
+              break lutLoop;
+            }
+            x += strWidth + 4;
+          }
+          y += h;
+        }
+      } else if (p.isObjectIndexHeader()) {
+        
+      } else if (p.isObjectIndex()) {
+        
+      } else {
+        int ix = 0;
+        dataLoop:
+        while (y < height) {
+          int x = 0;
+          while (x + strWidth/4 + 4 < width) {
+            g.drawString(String.format("%02x", p.readContent(ix++)), x, y);
+            if (ix >= Spiffs.cfg.logPageSize) {
+              break dataLoop;
+            }
+            x += strWidth/4 + 4;
+          }
+          y += h;
+        }
       }
     }
     g.setClip(oldClip);

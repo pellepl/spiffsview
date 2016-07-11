@@ -54,6 +54,10 @@ public class SpiffsPage implements SpiffsConstants {
     return Spiffs.readBuffer((int)(page_ix * Spiffs.cfg.logPageSize), (int)Spiffs.cfg.logPageSize);
   }
   
+  public int readContent(int ix) {
+    return Spiffs.read((int)(page_ix * Spiffs.cfg.logPageSize) + ix);
+  }
+  
   public long readIxEntry(int ix) {
     long nbrOfEntries = span_ix == 0 ? Spiffs.objectHeaderIndexLength() : Spiffs.objectIndexLength();
     if (ix > nbrOfEntries) {
