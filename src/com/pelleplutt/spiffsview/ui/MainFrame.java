@@ -48,6 +48,7 @@ import com.pelleplutt.spiffsview.Spiffs;
 import com.pelleplutt.spiffsview.SpiffsConfig;
 import com.pelleplutt.spiffsview.SpiffsPage;
 import com.pelleplutt.util.AppSystem;
+import com.pelleplutt.util.Log;
 import com.pelleplutt.util.UIUtil;
 
 public class MainFrame extends JFrame implements ProgressListener {
@@ -417,7 +418,7 @@ public class MainFrame extends JFrame implements ProgressListener {
         SpiffsPage.update();
         
         AnalyzerConfig cfgAnalyzer = new AnalyzerConfig();
-        cfgAnalyzer.analyze(Spiffs.cfg.physOffset, Spiffs.cfg.physSize);
+        //TODO cfgAnalyzer.analyze(Spiffs.cfg.physOffset, Spiffs.cfg.physSize);
         
         if (consAnalyzer != null) {
           consAnalyzer.removeListener(MainFrame.this);
@@ -449,6 +450,8 @@ public class MainFrame extends JFrame implements ProgressListener {
       if (f != null) {
         Settings.inst().listAdd(Settings.RECENT_FILES, f.getAbsolutePath());
         menuUpdateRecent();
+        
+        // TODO
 
         Spiffs.cfg = new SpiffsConfig();
 
@@ -501,17 +504,20 @@ public class MainFrame extends JFrame implements ProgressListener {
         Settings.inst().listAdd(Settings.RECENT_FILES, file.getAbsolutePath());
         menuUpdateRecent();
 
+        // TODO
+
         Spiffs.cfg = new SpiffsConfig();
 
         Spiffs.cfg.bigEndian = false;
-        Spiffs.cfg.physOffset = 0;//4*1024*1024;
-        Spiffs.cfg.physBlockSize = 4096;
-        Spiffs.cfg.logBlockSize = 4096;
+        Spiffs.cfg.physOffset = 4*1024*1024;//0;
+        Spiffs.cfg.physSize = 2*1024*1024;
+        Spiffs.cfg.physBlockSize = 65536;//4096;
+        Spiffs.cfg.logBlockSize = 65536*2;//4096;
         Spiffs.cfg.logPageSize = 256;
         Spiffs.cfg.fileNameSize = 32;
-        Spiffs.cfg.sizeObjId = 4;
-        Spiffs.cfg.sizePageIx = 4;
-        Spiffs.cfg.sizeSpanIx = 4;
+        Spiffs.cfg.sizeObjId = 2;//4;
+        Spiffs.cfg.sizePageIx = 2;//4;
+        Spiffs.cfg.sizeSpanIx = 2;//4;
         FileInputStream fart = null;
         try {
           //fart = new FileInputStream("/home/petera/proj/generic/spiffs/imgs/90.hidden_file.spiffs");
@@ -519,14 +525,17 @@ public class MainFrame extends JFrame implements ProgressListener {
           //fart = new FileInputStream("/home/petera/poo/spiffs/fsdump.bin");
           //fart = new FileInputStream("/home/petera/poo/spiffs/93.clean.img");
           FileChannel fc = fart.getChannel();
-          Spiffs.cfg.physSize = fc.size();
-          Spiffs.data = fc.map(FileChannel.MapMode.READ_ONLY, Spiffs.cfg.physOffset, Spiffs.cfg.physSize - Spiffs.cfg.physOffset);
+          //Spiffs.cfg.physSize = fc.size();
+          Spiffs.data = fc.map(FileChannel.MapMode.READ_ONLY, Spiffs.cfg.physOffset, Spiffs.cfg.physSize);
           Spiffs.data.order(Spiffs.cfg.bigEndian ? ByteOrder.BIG_ENDIAN : ByteOrder.LITTLE_ENDIAN);
 
           SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
               refreshAll();
+              Log.println("szOfPageHeader:  " + Spiffs.sizeOfPageHeader());
+              Log.println("szOfObjHeader:   " + Spiffs.sizeOfObjectHeader());
+              Log.println("szOfObjIxHeader: " + Spiffs.sizeOfObjectIndexHeader());
             }
           });
 

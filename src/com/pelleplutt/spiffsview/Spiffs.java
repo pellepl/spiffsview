@@ -8,7 +8,7 @@ public class Spiffs {
   
   public static long nbrOfPages() {
     if (cfg == null) return 0;
-    return (int)((cfg.physSize - cfg.physOffset) / cfg.logPageSize);
+    return (int)((cfg.physSize/* - cfg.physOffset*/) / cfg.logPageSize);
   }
   
   public static long pagesPerBlock() {
@@ -58,7 +58,7 @@ public class Spiffs {
   public static long sizeOfObjectHeader() {
     if (cfg == null) return 0;
     long phdrSz = sizeOfPageHeader();
-    return (long)(Math.ceil((double)phdrSz / 4.0) * 4.0);
+    return phdrSz + (4 - ((phdrSz & 3) == 0 ? 4 : (phdrSz & 3)));
   }
   
   public static long sizeOfObjectIndexHeader() {
@@ -68,7 +68,8 @@ public class Spiffs {
     sz += 1; // type
     sz += cfg.fileNameSize;
     // TODO if SPIFFS_ALIGNED_OBJECT_INDEX_TABLES, align on sizeof(spiffs_page_ix)
-    return (long)(Math.ceil((double)sz / (double)cfg.sizePageIx) * (double)cfg.sizePageIx);
+    //return (long)(Math.ceil((double)sz / (double)cfg.sizePageIx) * (double)cfg.sizePageIx);
+    return sz;
   }
   
   public static long dataPageSize() {
@@ -158,6 +159,9 @@ public class Spiffs {
   }
 
   public static int read(int pos) {
+    if (pos > cfg.physSize) {
+      throw new IndexOutOfBoundsException("reading from image @ " + pos + ", image is " + cfg.physSize);
+    }
     return data.get(pos) & 0xff;
   }
 

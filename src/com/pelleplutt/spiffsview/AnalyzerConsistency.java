@@ -178,16 +178,17 @@ public class AnalyzerConsistency implements Progressable {
           (ixPage.getSpanIndex() == 0 ? 
               0 : 
               (Spiffs.objectHeaderIndexLength() + Spiffs.objectIndexLength() * (ixPage.getSpanIndex() - 1)));
-      if (entryIx > maxEntryIx) {
+      if (entryIx >= maxEntryIx) {
         if (ixEntryVal != Spiffs.getFreePageId()) {
           add(new Problem(Problem.IX_REF_DIRTY, ixPage, ix, null));
         }
-      } else if (ixEntryVal == Spiffs.getFreePageId()) { 
+      } else if (ixEntryVal == Spiffs.getFreePageId()) {
+        //TODO FALSEPOSITIVE?
         add(new Problem(Problem.IX_REF_NOT_WRITTEN, ixPage, ix, null));
-      } else if (Spiffs.isLookupPage(ixEntryVal)) {
-        add(new Problem(Problem.IX_REF_LUT, ixPage, ix, SpiffsPage.getPage(ixEntryVal)));
       } else if (ixEntryVal > Spiffs.nbrOfPages()) {
         add(new Problem(Problem.IX_REF_BAD_PAGE, ixPage, ix, null));
+      } else if (Spiffs.isLookupPage(ixEntryVal)) {
+        add(new Problem(Problem.IX_REF_LUT, ixPage, ix, SpiffsPage.getPage(ixEntryVal)));
       } else {
         SpiffsPage refPage = SpiffsPage.getPage(ixEntryVal);
         if (refPage.isFree()) {
@@ -252,7 +253,7 @@ public class AnalyzerConsistency implements Progressable {
   }
 
   private void add(Problem p) {
-    Log.println(p.toString());
+    //Log.println(p.toString());
     problems.add(p);
   }
 

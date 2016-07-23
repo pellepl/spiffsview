@@ -22,6 +22,7 @@ import javax.swing.JScrollPane;
 
 import com.pelleplutt.spiffsview.Spiffs;
 import com.pelleplutt.spiffsview.SpiffsPage;
+import com.pelleplutt.util.Log;
 
 public class SpiffsPanel extends JPanel {
   private static final long serialVersionUID = 9114238879663074094L;
@@ -57,23 +58,29 @@ public class SpiffsPanel extends JPanel {
   static final GradientPaint[] paintData = {
     makePaint(0, 0, cd, cdb, 2.0),
     makePaint(0, cd, 0, cdb, 2.0),
+    makePaint(cd, 0, 0, cdb, 2.0),
     makePaint(0, cd, cd, cdb, 2.0),
     makePaint(cd, cd, 0, cdb, 2.0),
     makePaint(cd, 0, cd, cdb, 2.0),
+    makePaint(0, cd, 0, cdb, 2.0),
   };
   static final GradientPaint[] paintObjIx = {
     makePaint(0, 0, co, cob, 1.0),
     makePaint(0, co, 0, cob, 1.0),
+    makePaint(co, 0, 0, cob, 1.0),
     makePaint(0, co, co, cob, 1.0),
     makePaint(co, co, 0, cob, 1.0),
     makePaint(co, 0, co, cob, 1.0),
+    makePaint(0, co, 0, cob, 1.0),
   };
   static final GradientPaint[] paintObjIxHdr = {
     makePaint(0, 0, coh, cohb, 1.0),
     makePaint(0, coh, 0, cohb, 1.0),
+    makePaint(coh, 0, 0, cohb, 1.0),
     makePaint(0, coh, coh, cohb, 1.0),
     makePaint(coh, coh, 0, cohb, 1.0),
     makePaint(coh, 0, coh, cohb, 1.0),
+    makePaint(0, coh, 0, cohb, 1.0),
   };
   
   static GradientPaint makePaint(int r, int g, int b, int brighter, double w) {
@@ -211,8 +218,8 @@ public class SpiffsPanel extends JPanel {
         continue;
       }
       for (int i = 0; i < pagesPerRow; i++) {
+        if (pix >= Spiffs.nbrOfPages()) return;
         SpiffsPage p = SpiffsPage.getPage(pix);
-        if (p == null) return;
 
         g.translate(i * pageWidth, y);
         
@@ -226,7 +233,7 @@ public class SpiffsPanel extends JPanel {
         if (pix == hoverPix) {
           g.setColor(colorHover);
           g.fillRect(-magGrid, -magGrid, magPageWidth+magGrid, magPageHeight+magGrid);
-        }
+       }
         g.scale(mag, mag);
 
         paintPage(g, p, mag, magGrid, magPageWidth, magPageHeight);
@@ -259,7 +266,7 @@ public class SpiffsPanel extends JPanel {
     } else if (p.isFree()) {
       g.setPaint(paintFree);
     } else {
-      int cix = (int)Spiffs.cleanObjectId(p.getObjectId()) % paintData.length;
+      int cix = ((int)(Spiffs.cleanObjectId(p.getObjectId()))) % paintData.length;
       if (p.isObjectIndex()) {
         g.setPaint(p.isObjectIndexHeader() ? paintObjIxHdr[cix] : paintObjIx[cix]);
       } else {

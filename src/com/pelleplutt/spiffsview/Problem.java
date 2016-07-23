@@ -123,7 +123,7 @@ public class Problem {
           " entry ix " + entryIx + " points to free page " + refPage.getPageIndexString();
     case IX_REF_BAD_PAGE:
       return err() + "Index page " + page.getPageIndexString() + " span ix " + page.getSpanIndexString() + 
-          " entry ix " + entryIx + " points to invalid page";
+          " entry ix " + entryIx + " points to invalid page <" + Spiffs.formatPageIndex(page.readIxEntry(entryIx)) + ">";
     case IX_REF_LUT:
       return err() + "Index page " + page.getPageIndexString() + " span ix " + page.getSpanIndexString() + 
           " entry ix " + entryIx + " points to LUT page " + refPage.getPageIndexString();

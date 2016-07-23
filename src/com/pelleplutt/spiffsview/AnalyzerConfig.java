@@ -1,5 +1,8 @@
 package com.pelleplutt.spiffsview;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import com.pelleplutt.util.Log;
 
 
@@ -46,7 +49,7 @@ public class AnalyzerConfig implements Progressable {
    * 0x01-0xfe.
    * 
    * Secondly, only a bunch of 0xff until end of LUT, the last 2 till 8 bytes
-   * will contain erase count and mayby magic.
+   * will contain erase count and maybe magic.
    * 
    * Depending on endianess and obj id size, first part might look like this
    * 00001014 00000045 00000123 80000123
@@ -55,18 +58,21 @@ public class AnalyzerConfig implements Progressable {
    * fs_size / log_page_size
    */
   void searchLogicalBlockPatterns() {
-    long maxLUTEntryValue = cfg.physSize / LOG_PAGE_SZ[0]; 
-    long scores[] = new long[LOG_BLOCK_SZ.length];
+    Info info[] = new Info[LOG_BLOCK_SZ.length];
     for (int logBlockSzIx = 0; logBlockSzIx < LOG_BLOCK_SZ.length; logBlockSzIx++) {
-      long score = 0;
+      info[logBlockSzIx] = new Info();
       long blockSz = LOG_BLOCK_SZ[logBlockSzIx];
+      info[logBlockSzIx].blockSize = blockSz;
+      info[logBlockSzIx].blocks = (int)(cfg.physSize / blockSz);
+      Map<Integer, Integer> lutSizes = new HashMap<Integer, Integer>();
+      
       Log.println("===== CANDIDATE LOGBLKSZ " + blockSz);
       for (int blkIx = 0; blkIx < cfg.physSize / blockSz; blkIx++) {
         int conseqFF = 0;
         int cntFF = 0;
         int cnt00 = 0;
         int cntData = 0;
-        int addr = (int)(cfg.physOffset + blkIx * blockSz);
+        int addr = (int)(blkIx * blockSz);
         int blockOffs = 0;
         int b = 0;
         // first read lut entries
@@ -99,8 +105,13 @@ public class AnalyzerConfig implements Progressable {
           blockOffs++;
         } // block
         Log.println("  " + blkIx + " broken @ " + blockOffs + "  cntFF " + cntFF+ "  cnt00 " + cnt00 + "  cntDa " + cntData);
-
+        if (lutSizes.containsKey(blockOffs)) {
+          lutSizes.put(blockOffs, lutSizes.get(blockOffs).intValue() + 1);
+        } else {
+          lutSizes.put(blockOffs, 1);
+        }
       } // per all blocks
+      Log.println("" + lutSizes);
     } // per logical block size candidate
   }
   
@@ -112,5 +123,12 @@ public class AnalyzerConfig implements Progressable {
   @Override
   public void removeListener(ProgressListener p) {
     progress.removeListener(p);
+  }
+  
+  static class Info {
+    public long blockSize;
+    public int blocks;
+    public int winningLutSize;
+    public int averageLutSizeDeviation;
   }
 }

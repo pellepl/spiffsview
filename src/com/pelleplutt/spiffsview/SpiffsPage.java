@@ -23,8 +23,9 @@ public class SpiffsPage implements SpiffsConstants {
   }
   
   public static SpiffsPage getPage(long pix) {
+    if (Spiffs.nbrOfPages() == 0) return null;
     if (pix >= Spiffs.nbrOfPages()) {
-      return null;
+      throw new IndexOutOfBoundsException("Requesting page " + pix + " of " + Spiffs.nbrOfPages() + " pages");
     }
     
     if (!cache.containsKey(pix)) {
