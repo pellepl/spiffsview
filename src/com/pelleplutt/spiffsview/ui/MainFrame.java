@@ -457,7 +457,6 @@ public class MainFrame extends JFrame implements ProgressListener {
 
         Spiffs.cfg.bigEndian = false;
         Spiffs.cfg.physOffset = 0;//4*1024*1024;
-        Spiffs.cfg.physBlockSize = 4096;
         Spiffs.cfg.logBlockSize = 4096;
         Spiffs.cfg.logPageSize = 256;
         Spiffs.cfg.fileNameSize = 32;
@@ -511,7 +510,6 @@ public class MainFrame extends JFrame implements ProgressListener {
         Spiffs.cfg.bigEndian = false;
         Spiffs.cfg.physOffset = 4*1024*1024;//0;
         Spiffs.cfg.physSize = 2*1024*1024;
-        Spiffs.cfg.physBlockSize = 65536;//4096;
         Spiffs.cfg.logBlockSize = 65536*2;//4096;
         Spiffs.cfg.logPageSize = 256;
         Spiffs.cfg.fileNameSize = 32;

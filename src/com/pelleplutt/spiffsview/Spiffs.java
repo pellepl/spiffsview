@@ -67,9 +67,11 @@ public class Spiffs {
     sz += 4; // size
     sz += 1; // type
     sz += cfg.fileNameSize;
-    // TODO if SPIFFS_ALIGNED_OBJECT_INDEX_TABLES, align on sizeof(spiffs_page_ix)
-    //return (long)(Math.ceil((double)sz / (double)cfg.sizePageIx) * (double)cfg.sizePageIx);
-    return sz;
+    if (cfg.alignObjectIndexTables) {
+      return (long)(Math.ceil((double)sz / (double)cfg.sizePageIx) * (double)cfg.sizePageIx);
+    } else {
+      return sz;
+    }
   }
   
   public static long dataPageSize() {

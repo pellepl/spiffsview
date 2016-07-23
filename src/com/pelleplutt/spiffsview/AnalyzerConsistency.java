@@ -183,7 +183,6 @@ public class AnalyzerConsistency implements Progressable {
           add(new Problem(Problem.IX_REF_DIRTY, ixPage, ix, null));
         }
       } else if (ixEntryVal == Spiffs.getFreePageId()) {
-        //TODO FALSEPOSITIVE?
         add(new Problem(Problem.IX_REF_NOT_WRITTEN, ixPage, ix, null));
       } else if (ixEntryVal > Spiffs.nbrOfPages()) {
         add(new Problem(Problem.IX_REF_BAD_PAGE, ixPage, ix, null));
