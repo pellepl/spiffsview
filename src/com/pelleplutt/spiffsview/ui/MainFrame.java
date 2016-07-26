@@ -61,6 +61,7 @@ public class MainFrame extends JFrame implements ProgressListener {
   TreeModel problemTreeModel = new ProblemTreeModel();
   StatusPanel statusPanel;
   AnalyzerConsistency consAnalyzer;
+  boolean validSpiffsData;
   
   static public synchronized MainFrame inst() {
     if (_inst == null) {
@@ -432,12 +433,17 @@ public class MainFrame extends JFrame implements ProgressListener {
         problemTree.repaint();
         problemTree.validate();
         problemTree.updateUI();
+        validSpiffsData = true;
       }
     }, "refresher");
     t.setDaemon(true);
     t.start();
   }
   
+  public boolean hasValidSpiffsData(){
+    return validSpiffsData;
+
+  }
   
   class ActionOpenFileDump extends AbstractAction {
     public ActionOpenFileDump() {
@@ -452,6 +458,9 @@ public class MainFrame extends JFrame implements ProgressListener {
         menuUpdateRecent();
         
         // TODO
+        
+        SpiffsConfigDialog sfc = new SpiffsConfigDialog(f);
+        sfc.openConfig(Spiffs.cfg);
 
         Spiffs.cfg = new SpiffsConfig();
 
@@ -506,7 +515,8 @@ public class MainFrame extends JFrame implements ProgressListener {
         // TODO
 
         Spiffs.cfg = new SpiffsConfig();
-
+        SpiffsConfigDialog sfc = new SpiffsConfigDialog(file);
+        sfc.openConfig(null);
         Spiffs.cfg.bigEndian = false;
         Spiffs.cfg.physOffset = 4*1024*1024;//0;
         Spiffs.cfg.physSize = 2*1024*1024;
@@ -518,6 +528,7 @@ public class MainFrame extends JFrame implements ProgressListener {
         Spiffs.cfg.sizeSpanIx = 2;//4;
         FileInputStream fart = null;
         try {
+          /*
           //fart = new FileInputStream("/home/petera/proj/generic/spiffs/imgs/90.hidden_file.spiffs");
           fart = new FileInputStream(file);
           //fart = new FileInputStream("/home/petera/poo/spiffs/fsdump.bin");
@@ -536,7 +547,7 @@ public class MainFrame extends JFrame implements ProgressListener {
               Log.println("szOfObjIxHeader: " + Spiffs.sizeOfObjectIndexHeader());
             }
           });
-
+*/
           repaint();
         } catch (Throwable t) {
           t.printStackTrace();

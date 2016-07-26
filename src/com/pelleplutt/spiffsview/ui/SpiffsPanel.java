@@ -135,6 +135,7 @@ public class SpiffsPanel extends JPanel {
 
       @Override
       public void mouseMoved(MouseEvent e) {
+        if (!MainFrame.inst().hasValidSpiffsData()) return;
         int newHoverPix = getPixFromMouseEvent(e);
         if (newHoverPix != hoverPix) {
           hoverPix = newHoverPix;
@@ -166,6 +167,8 @@ public class SpiffsPanel extends JPanel {
   }
   
   public void recalcSize() {
+    if (!MainFrame.inst().hasValidSpiffsData()) return;
+
     int magPageWidth = (int)Math.round(mag * pageWidth);
     int magPageHeight = (int)Math.round(mag * pageHeight);
     int w = SpiffsPanel.this.parent.getViewport().getViewRect().width;
@@ -182,6 +185,8 @@ public class SpiffsPanel extends JPanel {
   }
 
   private void doPaint(Graphics2D g, double mag) {
+    if (!MainFrame.inst().hasValidSpiffsData()) return;
+
     if (strWidth < 0) {
       strWidth = (int)font.getStringBounds("WWWWWWWW", g.getFontRenderContext()).getWidth();
     }
