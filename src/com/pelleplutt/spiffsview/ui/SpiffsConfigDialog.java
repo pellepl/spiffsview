@@ -5,13 +5,11 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.event.FocusEvent;
 import java.awt.event.FocusListener;
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
 import java.io.File;
 
+import javax.swing.AbstractAction;
 import javax.swing.ButtonGroup;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
@@ -25,6 +23,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 
+import com.pelleplutt.spiffsview.Spiffs;
 import com.pelleplutt.spiffsview.SpiffsConfig;
 import com.pelleplutt.util.Log;
 
@@ -82,9 +81,40 @@ public class SpiffsConfigDialog extends JDialog implements FocusListener {
     getContentPane().setLayout(new BorderLayout());
     getContentPane().add(buildPanel(), BorderLayout.CENTER);
     JPanel butPanel = new JPanel();
-    butPanel.add(new JButton("OK"));
-    butPanel.add(new JButton("Cancel"));
-    butPanel.add(new JButton("Apply"));
+    JButton okBut = new JButton(new AbstractAction("OK") {
+      @Override
+      public void actionPerformed(ActionEvent e) {
+        Spiffs.cfg = config;
+        try {
+          SpiffsConfig.store(config, MainFrame.inst().makeConfigPathFromDumpFile(file));
+        } catch (Throwable t) {
+          //ignore
+        }
+        MainFrame.inst().loadSpiffsDump(file);
+        SpiffsConfigDialog.this.dispose();
+      }
+    });
+    JButton cancelBut = new JButton(new AbstractAction("Cancel") {
+      @Override
+      public void actionPerformed(ActionEvent e) {
+        SpiffsConfigDialog.this.dispose();
+      }
+    });
+    JButton applyBut = new JButton(new AbstractAction("Apply") {
+      @Override
+      public void actionPerformed(ActionEvent e) {
+        Spiffs.cfg = config;
+        try {
+          SpiffsConfig.store(config, MainFrame.inst().makeConfigPathFromDumpFile(file));
+        } catch (Throwable t) {
+          //ignore
+        }
+        MainFrame.inst().loadSpiffsDump(file);
+      }
+    });
+    butPanel.add(okBut);
+    butPanel.add(cancelBut);
+    butPanel.add(applyBut);
     getContentPane().add(butPanel, BorderLayout.SOUTH);
   }
   

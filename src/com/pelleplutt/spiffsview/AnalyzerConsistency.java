@@ -5,8 +5,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.pelleplutt.util.Log;
-
 public class AnalyzerConsistency implements Progressable {
   
   List<Problem> problems = new ArrayList<Problem>();
@@ -107,6 +105,9 @@ public class AnalyzerConsistency implements Progressable {
       if (!page.isObjectIndexHeader() && !files.containsKey(Spiffs.cleanObjectId(page.getObjectId()))) {
         add(new Problem(Problem.PAGE_ID_ORPHAN, page));
       }
+      if (page.isObjectIndexHeader() && page.isFlagIndexDeleted() && page.isFlagIndex() && page.isFlagFinalized() && !page.isFlagDeleted()) {
+        add(new Problem(Problem.PAGE_IX_HDR_NOT_FULLY_DELETED, page));
+      }
     }
   }
 
@@ -170,6 +171,7 @@ public class AnalyzerConsistency implements Progressable {
   void analyzeIndex(SpiffsPage ixPage) {
     int indices = (int)(ixPage.getSpanIndex() == 0 ? Spiffs.objectHeaderIndexLength() : Spiffs.objectIndexLength());
     SpiffsFile file = files.get(Spiffs.cleanObjectId(ixPage.getObjectId())); // TODO check null
+    if (file == null) return;
     long maxEntryIx = file.getNbrOfDataPages();
     for (int ix = 0; ix < indices; ix++) {
       long ixEntryVal = ixPage.readIxEntry(ix);

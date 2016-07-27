@@ -22,6 +22,7 @@ public class Problem {
   public static final int PAGE_UNFINALIZED = 0x51;
   public static final int PAGE_ID_CONFLICT = 0x52;
   public static final int PAGE_ID_ORPHAN = 0x53;
+  public static final int PAGE_IX_HDR_NOT_FULLY_DELETED = 0x54;
   public static final int FILE_MISSING_DATA_SPAN_IX = 0x72;
   public static final int FILE_SUPERFLUOUS_DATA_SPAN_IX = 0x73;
   public static final int FILE_MISSING_IX_SPAN_IX = 0x70;
@@ -155,6 +156,9 @@ public class Problem {
     case PAGE_ID_ORPHAN:
       return err() + "Page " + page.getPageIndexString() + " with obj id " + page.getObjectIdString() + ", span ix " +
         page.getSpanIndexString() + " has no corresponding object index header";
+    case PAGE_IX_HDR_NOT_FULLY_DELETED:
+      return err() + "Index header page " + page.getPageIndexString() + " with obj id " + page.getObjectIdString() + 
+        " is marked as deleted but not fully deleted - file removal aborted";
     case FILE_MISSING_DATA_SPAN_IX:
       return err() + "File with obj id " + page.getObjectIdString() + " has size " + page.getSizeString() + " but" +
         " has not enough data pages, missing span ix " + spanIx;

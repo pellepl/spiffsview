@@ -13,6 +13,7 @@ import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.nio.ByteOrder;
 import java.nio.channels.FileChannel;
 
@@ -24,6 +25,7 @@ import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JSeparator;
 import javax.swing.JSplitPane;
 import javax.swing.JTree;
 import javax.swing.JViewport;
@@ -37,7 +39,6 @@ import javax.swing.tree.TreeCellRenderer;
 import javax.swing.tree.TreeModel;
 import javax.swing.tree.TreePath;
 
-import com.pelleplutt.spiffsview.AnalyzerConfig;
 import com.pelleplutt.spiffsview.AnalyzerConsistency;
 import com.pelleplutt.spiffsview.Essential;
 import com.pelleplutt.spiffsview.Problem;
@@ -62,6 +63,10 @@ public class MainFrame extends JFrame implements ProgressListener {
   StatusPanel statusPanel;
   AnalyzerConsistency consAnalyzer;
   boolean validSpiffsData;
+  File curDumpFile;
+  FileInputStream curDumpFileStream;
+  FileChannel curDumpFileChannel;
+  DataPanel pageDataPanel;
   
   static public synchronized MainFrame inst() {
     if (_inst == null) {
@@ -73,6 +78,10 @@ public class MainFrame extends JFrame implements ProgressListener {
   private MainFrame() {
     setup();
   }
+  
+  /////////////////////////////////////////////////////////////////////////////
+  // Construction
+  /////////////////////////////////////////////////////////////////////////////
 
   private void setup() {
     try {
@@ -144,7 +153,15 @@ public class MainFrame extends JFrame implements ProgressListener {
     menuBar.add(menu);
     menu.add(new JMenuItem(new ActionOpenFileDump()));
     menu.add(recentFiles);
+    menu.add(new JSeparator());
+    menu.add(new JMenuItem(new ActionSpiffsConfig()));
+    menu.add(new JSeparator());
+    menu.add(new JMenuItem(new ActionExit()));
     menuUpdateRecent();
+
+    menu = new JMenu("Help");
+    menuBar.add(menu);
+    menu.add(new JMenuItem(new ActionAbout()));
 
     
     setJMenuBar(menuBar);
@@ -154,7 +171,7 @@ public class MainFrame extends JFrame implements ProgressListener {
     Container c = getContentPane();
     c.setLayout(new BorderLayout());
     
-    JSplitPane splitter = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
+    JSplitPane mainsplitter = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
     
     JScrollPane pageScroll = new JScrollPane(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
     pagePanel = new SpiffsPanel(pageScroll);
@@ -191,13 +208,18 @@ public class MainFrame extends JFrame implements ProgressListener {
         JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
     treeScroll.getViewport().setScrollMode(JViewport.SIMPLE_SCROLL_MODE); // fix artefacts on xubuntu while horizontal scrolling
 
-    splitter.setTopComponent(pageScroll);
-    splitter.setBottomComponent(treeScroll);
-    splitter.setDividerSize(4);
+    JPanel bottomPanel = new JPanel(new BorderLayout());
+    bottomPanel.add(treeScroll, BorderLayout.CENTER);
+    pageDataPanel = new DataPanel();
+    bottomPanel.add(pageDataPanel, BorderLayout.EAST);
+    
+    mainsplitter.setTopComponent(pageScroll);
+    mainsplitter.setBottomComponent(bottomPanel);
+    mainsplitter.setDividerSize(4);
     
     statusPanel = new StatusPanel();
     
-    c.add(splitter, BorderLayout.CENTER);
+    c.add(mainsplitter, BorderLayout.CENTER);
     c.add(statusPanel, BorderLayout.SOUTH);
   }
 
@@ -206,8 +228,19 @@ public class MainFrame extends JFrame implements ProgressListener {
     Settings.inst().saveSettings();
     AppSystem.disposeAll();
     this.dispose();
+    if (curDumpFile != null) {
+      AppSystem.closeSilently(curDumpFileStream);
+      try {
+        curDumpFileChannel.close();
+      } catch (IOException e) {
+      }
+    }
   }
   
+
+  /////////////////////////////////////////////////////////////////////////////
+  // Tree stuff
+  /////////////////////////////////////////////////////////////////////////////
   
   
   class ProblemTreeCellRenderer implements TreeCellRenderer {
@@ -406,20 +439,30 @@ public class MainFrame extends JFrame implements ProgressListener {
     
   };
   
+  
+  /////////////////////////////////////////////////////////////////////////////
+  // MainFrame general ops 
+  /////////////////////////////////////////////////////////////////////////////
+
+  public void displayPageContents(int pix) {
+    pageDataPanel.setData((int)Spiffs.physOffsetOfPage(pix),
+        SpiffsPage.getPage(pix).readContents());
+    repaint();
+  }
+  
   public void setStatus(String status) {
     statusPanel.setText(status);
   }
   
   public void refreshAll() {
     Thread t = new Thread(new Runnable() {
-
       @Override
       public void run() {
         setStatus("Loading...");
         SpiffsPage.update();
         
-        AnalyzerConfig cfgAnalyzer = new AnalyzerConfig();
-        //TODO cfgAnalyzer.analyze(Spiffs.cfg.physOffset, Spiffs.cfg.physSize);
+        // TODO AnalyzerConfig cfgAnalyzer = new AnalyzerConfig();
+        // TODO cfgAnalyzer.analyze(Spiffs.cfg.physOffset, Spiffs.cfg.physSize);
         
         if (consAnalyzer != null) {
           consAnalyzer.removeListener(MainFrame.this);
@@ -428,12 +471,13 @@ public class MainFrame extends JFrame implements ProgressListener {
         consAnalyzer.addListener(MainFrame.this);
         setStatus("Analyzing...");
         consAnalyzer.analyze();
-        setStatus("Analyzed");
+        setStatus("Analyzed, " + (consAnalyzer.getProblems().isEmpty() ? "OK" : ((consAnalyzer.getProblems().size() + " problems"))));
         problemTree.setModel(problemTreeModel);
         problemTree.repaint();
         problemTree.validate();
         problemTree.updateUI();
         validSpiffsData = true;
+        repaint();
       }
     }, "refresher");
     t.setDaemon(true);
@@ -442,9 +486,87 @@ public class MainFrame extends JFrame implements ProgressListener {
   
   public boolean hasValidSpiffsData(){
     return validSpiffsData;
-
   }
   
+  public File makeConfigPathFromDumpFile(File file) {
+    return new File(file.getParentFile(), "." + file.getName() + ".spiffsview");
+  }
+  
+  public SpiffsConfig loadConfig(File file) {
+    SpiffsConfig cfg = null;
+    File configFile = makeConfigPathFromDumpFile(file);
+    if (configFile.exists() && configFile.isFile()) {
+      // start trying with local file
+      try {
+        cfg = SpiffsConfig.load(configFile);
+      } catch (IllegalArgumentException | IllegalAccessException | IOException e) {
+        Log.printStackTrace(e);
+      }
+    } else {
+      // next try with folder file
+      configFile = new File(file.getParentFile(), "." + file.getParentFile().getName() + ".spiffsview");
+      if (configFile.exists() && configFile.isFile()) {
+        try {
+          cfg = SpiffsConfig.load(configFile);
+        } catch (IllegalArgumentException | IllegalAccessException | IOException e) {
+          Log.printStackTrace(e);
+        }
+      }
+    
+    }
+    return cfg;
+  }
+    
+  public void loadSpiffsDump(File file) {
+    FileInputStream fart;
+    if (curDumpFile != null) {
+      AppSystem.closeSilently(curDumpFileStream);
+      try {
+        curDumpFileChannel.close();
+      } catch (IOException e) {
+      }
+      curDumpFile = null;
+      curDumpFileStream = null;
+      curDumpFileChannel = null;
+      validSpiffsData = false;
+    }
+    try {
+      fart = new FileInputStream(file);
+      FileChannel fc = fart.getChannel();
+      curDumpFile = file;
+      curDumpFileStream = fart;
+      curDumpFileChannel = fc;
+      Spiffs.data = fc.map(FileChannel.MapMode.READ_ONLY, Spiffs.cfg.physOffset, Spiffs.cfg.physSize);
+      Spiffs.data.order(Spiffs.cfg.bigEndian ? ByteOrder.BIG_ENDIAN : ByteOrder.LITTLE_ENDIAN);
+      setTitle(Essential.name + " v" + Essential.vMaj + "." + Essential.vMin
+          + "." + Essential.vMic + " [" + file.getName() + "]");
+
+      SwingUtilities.invokeLater(new Runnable() {
+        @Override
+        public void run() {
+          refreshAll();
+        }
+      });
+
+    } catch (IOException e) {
+    }
+  }
+  
+  private void uiOpenDump(File file) {
+    SpiffsConfig config = loadConfig(file);
+    if (config == null) {
+      SpiffsConfigDialog sfc = new SpiffsConfigDialog(file);
+      sfc.openConfig(null);
+    } else {
+      Spiffs.cfg = config;
+      loadSpiffsDump(file);
+    }
+  }
+  
+  /////////////////////////////////////////////////////////////////////////////
+  // Actions
+  /////////////////////////////////////////////////////////////////////////////
+
   class ActionOpenFileDump extends AbstractAction {
     public ActionOpenFileDump() {
       super("Open file dump...");
@@ -452,49 +574,11 @@ public class MainFrame extends JFrame implements ProgressListener {
     
     @Override
     public void actionPerformed(ActionEvent e) {
-      File f = UIUtil.selectFile(MainFrame.this, getValue(AbstractAction.NAME).toString(), "Open", true, false);
-      if (f != null) {
-        Settings.inst().listAdd(Settings.RECENT_FILES, f.getAbsolutePath());
+      File file = UIUtil.selectFile(MainFrame.this, getValue(AbstractAction.NAME).toString(), "Open", true, false);
+      if (file != null) {
+        Settings.inst().listAdd(Settings.RECENT_FILES, file.getAbsolutePath());
         menuUpdateRecent();
-        
-        // TODO
-        
-        SpiffsConfigDialog sfc = new SpiffsConfigDialog(f);
-        sfc.openConfig(Spiffs.cfg);
-
-        Spiffs.cfg = new SpiffsConfig();
-
-        Spiffs.cfg.bigEndian = false;
-        Spiffs.cfg.physOffset = 0;//4*1024*1024;
-        Spiffs.cfg.logBlockSize = 4096;
-        Spiffs.cfg.logPageSize = 256;
-        Spiffs.cfg.fileNameSize = 32;
-        Spiffs.cfg.sizeObjId = 4;
-        Spiffs.cfg.sizePageIx = 4;
-        Spiffs.cfg.sizeSpanIx = 4;
-        FileInputStream fart = null;
-        try {
-          //fart = new FileInputStream("/home/petera/proj/generic/spiffs/imgs/90.hidden_file.spiffs");
-          fart = new FileInputStream("/home/petera/proj/generic/spiffs/imgs/93.dump.bin");
-          //fart = new FileInputStream("/home/petera/poo/spiffs/fsdump.bin");
-          //fart = new FileInputStream("/home/petera/poo/spiffs/93.clean.img");
-          FileChannel fc = fart.getChannel();
-          Spiffs.cfg.physSize = fc.size();
-          Spiffs.data = fc.map(FileChannel.MapMode.READ_ONLY, Spiffs.cfg.physOffset, Spiffs.cfg.physSize - Spiffs.cfg.physOffset);
-          Spiffs.data.order(Spiffs.cfg.bigEndian ? ByteOrder.BIG_ENDIAN : ByteOrder.LITTLE_ENDIAN);
-
-          SwingUtilities.invokeLater(new Runnable() {
-            @Override
-            public void run() {
-              refreshAll();
-            }
-          });
-          repaint();
-        } catch (Throwable t) {
-          t.printStackTrace();
-        } finally {
-//          AppSystem.closeSilently(fart);
-        }
+        uiOpenDump(file);
       }
     }
   }
@@ -511,54 +595,51 @@ public class MainFrame extends JFrame implements ProgressListener {
       if (file != null) {
         Settings.inst().listAdd(Settings.RECENT_FILES, file.getAbsolutePath());
         menuUpdateRecent();
-
-        // TODO
-
-        Spiffs.cfg = new SpiffsConfig();
-        SpiffsConfigDialog sfc = new SpiffsConfigDialog(file);
-        sfc.openConfig(null);
-        Spiffs.cfg.bigEndian = false;
-        Spiffs.cfg.physOffset = 4*1024*1024;//0;
-        Spiffs.cfg.physSize = 2*1024*1024;
-        Spiffs.cfg.logBlockSize = 65536*2;//4096;
-        Spiffs.cfg.logPageSize = 256;
-        Spiffs.cfg.fileNameSize = 32;
-        Spiffs.cfg.sizeObjId = 2;//4;
-        Spiffs.cfg.sizePageIx = 2;//4;
-        Spiffs.cfg.sizeSpanIx = 2;//4;
-        FileInputStream fart = null;
-        try {
-          /*
-          //fart = new FileInputStream("/home/petera/proj/generic/spiffs/imgs/90.hidden_file.spiffs");
-          fart = new FileInputStream(file);
-          //fart = new FileInputStream("/home/petera/poo/spiffs/fsdump.bin");
-          //fart = new FileInputStream("/home/petera/poo/spiffs/93.clean.img");
-          FileChannel fc = fart.getChannel();
-          //Spiffs.cfg.physSize = fc.size();
-          Spiffs.data = fc.map(FileChannel.MapMode.READ_ONLY, Spiffs.cfg.physOffset, Spiffs.cfg.physSize);
-          Spiffs.data.order(Spiffs.cfg.bigEndian ? ByteOrder.BIG_ENDIAN : ByteOrder.LITTLE_ENDIAN);
-
-          SwingUtilities.invokeLater(new Runnable() {
-            @Override
-            public void run() {
-              refreshAll();
-              Log.println("szOfPageHeader:  " + Spiffs.sizeOfPageHeader());
-              Log.println("szOfObjHeader:   " + Spiffs.sizeOfObjectHeader());
-              Log.println("szOfObjIxHeader: " + Spiffs.sizeOfObjectIndexHeader());
-            }
-          });
-*/
-          repaint();
-        } catch (Throwable t) {
-          t.printStackTrace();
-        } finally {
-//          AppSystem.closeSilently(fart);
-        }
+        uiOpenDump(file);
       }
     }
   }
 
-  // Progresslistener Impl
+  class ActionSpiffsConfig extends AbstractAction {
+    public ActionSpiffsConfig() {
+      super("Spiffs config");
+    }
+    
+    @Override
+    public void actionPerformed(ActionEvent e) {
+      if (curDumpFile != null) {
+        SpiffsConfigDialog sfc = new SpiffsConfigDialog(curDumpFile);
+        sfc.openConfig(Spiffs.cfg);
+      }
+    }
+  }
+
+  class ActionExit extends AbstractAction {
+    public ActionExit() {
+      super("Exit");
+    }
+    
+    @Override
+    public void actionPerformed(ActionEvent e) {
+      doExit();
+    }
+  }
+
+  class ActionAbout extends AbstractAction {
+    public ActionAbout() {
+      super("About...");
+    }
+    
+    @Override
+    public void actionPerformed(ActionEvent e) {
+      new AboutDialog();
+    }
+  }
+
+  /////////////////////////////////////////////////////////////////////////////
+  // Progress listener stuff
+  /////////////////////////////////////////////////////////////////////////////
+
   @Override
   public void started(Progressable p) {
     statusPanel.setProgress(0);

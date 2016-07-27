@@ -22,7 +22,6 @@ import javax.swing.JScrollPane;
 
 import com.pelleplutt.spiffsview.Spiffs;
 import com.pelleplutt.spiffsview.SpiffsPage;
-import com.pelleplutt.util.Log;
 
 public class SpiffsPanel extends JPanel {
   private static final long serialVersionUID = 9114238879663074094L;
@@ -91,8 +90,9 @@ public class SpiffsPanel extends JPanel {
         new Color(r,g,b));
   }
   static final Color colorIndexHeader = new Color(255,255,255);
-  static final Color colorHover = new Color(255,255,0,150);
-  static final Color colorProblem = new Color(255,0,0,255);
+  static final Color colorHover = new Color(255,255,0,110);
+  static final Color colorSelected = new Color(255,255,0,210);
+  static final Color colorProblem = new Color(255,0,0,210);
   
   static final Font font = MainFrame.DEFAULT_FONT;
   static int strWidth = -1; 
@@ -102,6 +102,7 @@ public class SpiffsPanel extends JPanel {
   private Set<Long> problemPixes = new HashSet<Long>();
   volatile int offsX;
   volatile int hoverPix = -1;
+  volatile int selectedPix = -1;
   
   public SpiffsPanel(JScrollPane parent) {
     setDoubleBuffered(true);
@@ -139,6 +140,17 @@ public class SpiffsPanel extends JPanel {
         int newHoverPix = getPixFromMouseEvent(e);
         if (newHoverPix != hoverPix) {
           hoverPix = newHoverPix;
+          repaint();
+        }
+      }
+      
+      @Override
+      public void mouseClicked(MouseEvent e) {
+        if (!MainFrame.inst().hasValidSpiffsData()) return;
+        int newSelPix = getPixFromMouseEvent(e);
+        if (newSelPix != selectedPix) {
+          selectedPix = newSelPix;
+          MainFrame.inst().displayPageContents(newSelPix);
           repaint();
         }
       }
@@ -238,7 +250,11 @@ public class SpiffsPanel extends JPanel {
         if (pix == hoverPix) {
           g.setColor(colorHover);
           g.fillRect(-magGrid, -magGrid, magPageWidth+magGrid, magPageHeight+magGrid);
-       }
+        }
+        if (pix == selectedPix) {
+          g.setColor(colorSelected);
+          g.fillRect(-magGrid, -magGrid, magPageWidth+magGrid, magPageHeight+magGrid);
+        }
         g.scale(mag, mag);
 
         paintPage(g, p, mag, magGrid, magPageWidth, magPageHeight);
