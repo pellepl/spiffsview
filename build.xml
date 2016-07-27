@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<project default="deploy" name="Make a spiffsview release">
+	<taskdef resource="net/sf/antcontrib/antcontrib.properties">
+	  <classpath>
+	    <pathelement location="ant-contrib-0.6.jar"/>
+	  </classpath>
+	</taskdef>
+	<property environment="env" />
+	<loadfile property="versionfile" srcfile="src/com/pelleplutt/spiffsview/Essential.java"/>
+    <target name="deploy">
+    	<for param="line" delimiter="${line.separator}" list="${versionfile}">
+            <sequential>
+                <propertyregex property="vmaj" input="@{line}" regexp="int vMaj\s*=\s*([0-9]+);" select="\1" />
+                <propertyregex property="vmin" input="@{line}" regexp="int vMin\s*=\s*([0-9]+);" select="\1" />
+                <propertyregex property="vmic" input="@{line}" regexp="int vMic\s*=\s*([0-9]+);" select="\1" />
+            </sequential>
+    	</for>
+    	
+    	<delete dir="bin"/>
+    	<mkdir dir="bin"/>
+    	<javac srcdir="src" destdir="bin"/>
+    	<copy todir="bin">
+    	  <fileset dir="res"/>
+ 	  	</copy>
+        <jar destfile="release/spiffsview-${vmaj}.${vmin}.${vmic}.jar" filesetmanifest="mergewithoutmain">
+            <manifest>
+                <attribute name="Main-Class" value="com.pelleplutt.spiffsview.SpiffsViewBootstrap"/>
+                <attribute name="Class-Path" value="."/>
+            </manifest>
+            <fileset dir="bin"/>
+        </jar>
+    </target>
+</project>
